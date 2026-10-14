@@ -367,6 +367,48 @@ function renderingHooks({ matchTwoslashStyling = false }: ThreeslashRendererOpti
                 node.children.push(annotation);
             }
         },
+        code(node) {
+            if (!this.meta.threeslash) {
+                return;
+            }
+            let annotated = false;
+            node.children = node.children.flatMap<ElementContent>((child) => {
+                // The newline before the annotations replaces the source-line
+                // separator after them, avoiding an extra row in flex layouts.
+                if (annotated && child.type === 'text' && child.value === '\n') {
+                    annotated = false;
+                    return [];
+                }
+                annotated = false;
+                if (child.type !== 'element') {
+                    return [child];
+                }
+                const annotations: Array<Element> = [];
+                child.children = child.children.filter((candidate) => {
+                    if (
+                        candidate.type === 'element' &&
+                        Object.hasOwn(candidate.properties, 'data-threeslash-annotation')
+                    ) {
+                        annotations.push(candidate);
+                        return false;
+                    }
+                    return true;
+                });
+                if (annotations.length === 0) {
+                    return [child];
+                }
+                for (const annotation of annotations) {
+                    if (matchTwoslashStyling) {
+                        // Match Twoslash's native block annotations and let the
+                        // site's stylesheet choose their display mode.
+                        annotation.tagName = 'div';
+                        delete annotation.properties.style;
+                    }
+                }
+                annotated = true;
+                return [child, text('\n'), ...annotations];
+            });
+        },
     };
 }
 

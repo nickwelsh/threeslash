@@ -47,6 +47,18 @@ function findClass(nodes: Array<Element>, name: string): Element {
     return node;
 }
 
+function codeStructure(code: Element | undefined) {
+    return code?.children.map((child) => {
+        if (child.type === 'text') {
+            return child.value;
+        }
+        if (child.type === 'element') {
+            return child.properties['data-threeslash-annotation'] ?? 'source';
+        }
+        return child.type;
+    });
+}
+
 const analysis: PhpAnalysis = {
     code: '$greeting = "hello"; echo $greeting;',
     hovers: [
@@ -313,6 +325,76 @@ test('twoslash styling uses warning classes for underlines and leaves ordinary F
         'twoslash',
     );
 });
+
+test.each([false, true])(
+    'places annotations between source lines without adding blank lines (twoslash: %s)',
+    (matchTwoslashStyling) => {
+        const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 2 } };
+        const result: PhpAnalysis = {
+            code: "$a = 'Hello World';\n\necho $a;",
+            hovers: [],
+            queries: [
+                { range, position: range.start, contents: 'First query' },
+                { range, position: { line: 2, character: 5 }, contents: 'Last query' },
+            ],
+            diagnostics: [{ range, severity: 1, message: 'Example diagnostic' }],
+        };
+        const tree = highlighter.codeToHast(result.code, {
+            lang: 'php',
+            theme: 'github-light',
+            transformers: [transformerThreeslash(result, { matchTwoslashStyling })],
+        });
+        const code = descendants(tree).find((node) => node.tagName === 'code');
+        expect(codeStructure(code)).toStrictEqual([
+            'source',
+            '\n',
+            'query',
+            'diagnostic',
+            'source',
+            '\n',
+            'source',
+            '\n',
+            'query',
+        ]);
+        const nodes = descendants(tree);
+        const lines = nodes.filter((node) => hasClass(node, 'line'));
+        expect(lines.map((node) => content(node))).toStrictEqual(result.code.split('\n'));
+        const annotations = nodes.filter((node) => Object.hasOwn(node.properties, 'data-threeslash-annotation'));
+        expect(annotations).toHaveLength(3);
+        expect(
+            annotations.every((node) => code?.children.includes(node) === true && node.properties.style === undefined),
+        ).toBe(true);
+        expect(annotations.every((node) => node.tagName === (matchTwoslashStyling ? 'div' : 'span'))).toBe(true);
+    },
+);
+
+test.each([false, true])(
+    'does not insert blank lines between consecutive annotated source lines (twoslash: %s)',
+    (matchTwoslashStyling) => {
+        const result: PhpAnalysis = {
+            code: '$a = 1;\n$a++;\necho $a;',
+            hovers: [],
+            diagnostics: [],
+            queries: [0, 1].map((line) => ({
+                range: { start: { line, character: 0 }, end: { line, character: 2 } },
+                position: { line, character: 0 },
+                contents: 'int',
+            })),
+        };
+        const tree = highlighter.codeToHast(result.code, {
+            lang: 'php',
+            theme: 'github-light',
+            transformers: [transformerThreeslash(result, { matchTwoslashStyling })],
+        });
+        const code = descendants(tree).find((node) => node.tagName === 'code');
+        expect(codeStructure(code)).toStrictEqual(['source', '\n', 'query', 'source', '\n', 'query', 'source']);
+        expect(
+            descendants(tree)
+                .filter((node) => hasClass(node, 'line'))
+                .map((node) => content(node)),
+        ).toStrictEqual(result.code.split('\n'));
+    },
+);
 
 test('fumadocs transformer leaves ordinary PHP and other languages alone without PHPantom', async () => {
     const transformer = transformerThreeslashFumadocs({ executable: '/must-not-be-started' });

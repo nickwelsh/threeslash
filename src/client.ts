@@ -15,15 +15,18 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
     let describedBy: string | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const enhanced = new Set<HTMLElement>();
-    const hiddenPopups = new Map<HTMLElement, string>();
+    const hiddenPopups = new Map<HTMLElement, { value: string; priority: string }>();
 
     function hideEmbeddedPopups(root: ParentNode) {
         for (const embedded of root.querySelectorAll<HTMLElement>(
             '[data-threeslash-code] .twoslash-hover > .twoslash-popup-container',
         )) {
             if (!hiddenPopups.has(embedded)) {
-                hiddenPopups.set(embedded, embedded.style.visibility);
-                embedded.style.visibility = 'hidden';
+                hiddenPopups.set(embedded, {
+                    value: embedded.style.display,
+                    priority: embedded.style.getPropertyPriority('display'),
+                });
+                embedded.style.setProperty('display', 'none', 'important');
             }
         }
     }
@@ -226,8 +229,8 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         }
     }
 
-    // Twoslash hides inactive popups with opacity; visibility also removes
-    // their links from the tab order and accessibility tree while enhanced.
+    // Remove embedded copies from layout, the tab order, and the accessibility
+    // tree. Only the active floating copy should occupy space while enhanced.
     hideEmbeddedPopups(container);
     doc.addEventListener('pointerover', pointerOver);
     doc.addEventListener('pointerout', pointerOut);
@@ -242,8 +245,8 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         for (const pre of enhanced) {
             delete pre.dataset['threeslashEnhanced'];
         }
-        for (const [embedded, visibility] of hiddenPopups) {
-            embedded.style.visibility = visibility;
+        for (const [embedded, display] of hiddenPopups) {
+            embedded.style.setProperty('display', display.value, display.priority);
         }
         doc.removeEventListener('pointerover', pointerOver);
         doc.removeEventListener('pointerout', pointerOut);

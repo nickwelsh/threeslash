@@ -3,6 +3,8 @@ import { evaluate } from '@mdx-js/mdx';
 import { createElement } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { parseFragment } from 'parse5';
+import { elements } from '../helpers/html.js';
 import { ThreeslashPre } from '../../src/fumadocs.js';
 import { applyMdxPreset, defineConfig } from 'fumadocs-mdx/config';
 import { rehypeCodeDefaultOptions } from 'fumadocs-core/mdx-plugins';
@@ -90,4 +92,10 @@ test('compiles Twoslash-styled PHP through the Fumadocs transformer and pre comp
     expect(html).toMatch(/<pre[^>]*class="[^"]*twoslash/u);
     expect(html).not.toMatch(/class="[^"]*threeslash/u);
     expect(html).not.toContain('@errors');
+    const annotations = elements(parseFragment(html)).filter((node) =>
+        node.attrs.some((attribute) => attribute.name === 'data-threeslash-annotation'),
+    );
+    expect(annotations).toHaveLength(2);
+    expect(annotations.every((node) => node.parentNode?.nodeName === 'code')).toBe(true);
+    expect(annotations.every((node) => node.attrs.every((attribute) => attribute.name !== 'style'))).toBe(true);
 });
