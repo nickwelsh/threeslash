@@ -74,9 +74,13 @@
         "format:check": "oxfmt --check"
     },
     "dependencies": {
+        "@shikijs/twoslash": "^4.5.0",
+        "@shikijs/types": "^4.5.0",
         "hast-util-sanitize": "^5.0.2",
+        "hast-util-to-mdast": "^10.1.2",
         "mdast-util-from-markdown": "^2.1.0",
         "mdast-util-to-hast": "^13.2.1",
+        "mdast-util-to-markdown": "^2.2.0",
         "vscode-jsonrpc": "^9.0.3",
         "vscode-languageserver-protocol": "^3.17.5"
     },
@@ -94,6 +98,7 @@
         "eslint-plugin-regexp": "^3.3.1",
         "fumadocs-core": "^16.0.0",
         "fumadocs-mdx": "^15.4.7",
+        "fumadocs-twoslash": "^4.0.2",
         "fumadocs-ui": "^16.17.1",
         "markdownlint-cli2": "^0.23.3",
         "oxfmt": "^0.72.0",
@@ -109,11 +114,15 @@
         "vitest": "^5.0.4"
     },
     "peerDependencies": {
+        "fumadocs-twoslash": "^4.0.2",
         "fumadocs-ui": "^16.17.0",
         "react": "^19.2.0",
         "shiki": "^4.5.0"
     },
     "peerDependenciesMeta": {
+        "fumadocs-twoslash": {
+            "optional": true
+        },
         "fumadocs-ui": {
             "optional": true
         },

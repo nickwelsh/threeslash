@@ -7,6 +7,8 @@ import type { CodeBlockProps } from 'fumadocs-ui/components/codeblock';
 import { buttonVariants } from 'fumadocs-ui/components/ui/button';
 import { enhanceThreeslash } from './client.js';
 
+export { Popup, PopupContent, PopupTrigger } from 'fumadocs-twoslash/ui';
+
 export type ThreeslashPreProps = CodeBlockProps & {
     'data-threeslash-code'?: string;
     style?: ComponentProps<'pre'>['style'];
@@ -46,15 +48,15 @@ function CopyPhp({ source, matchTwoslashStyling }: { source: string; matchTwosla
 
 /** Use as the MDX `pre` component. Ordinary code blocks retain Fumadocs' controls. */
 export function ThreeslashPre({ children, 'data-threeslash-code': source, ...props }: ThreeslashPreProps) {
-    const matchTwoslashStyling = props.className?.split(/\s+/u).includes('twoslash') ?? false;
+    const matchTwoslashStyling = !(props.className?.split(/\s+/u).includes('threeslash') ?? false);
     const ref = useRef<HTMLElement>(null);
     // oxlint-disable react/exhaustive-effect-dependencies -- Regenerated MDX children must reset active tooltips even when the visible source is unchanged.
     useEffect(() => {
-        if (source === undefined || !ref.current) {
+        if (matchTwoslashStyling || source === undefined || !ref.current) {
             return;
         }
         return enhanceThreeslash(ref.current);
-    }, [source, children]);
+    }, [source, children, matchTwoslashStyling]);
     // oxlint-enable react/exhaustive-effect-dependencies
     const { Actions } = props;
     return (

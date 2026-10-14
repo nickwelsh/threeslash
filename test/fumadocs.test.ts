@@ -10,7 +10,7 @@ test('fumadocs wrapper uses source-aware copying only for Threeslash blocks', ()
     expect(html).toMatch(/Copy PHP/u);
     expect(html).toMatch(/data-threeslash-code="\$value = 1;"/u);
     expect(html).toMatch(/example.php/u);
-    expect(html).toMatch(/<pre[^>]*class="[^"]*threeslash/u);
+    expect(html).toMatch(/<pre[^>]*class="[^"]*twoslash/u);
     const ordinary = renderToStaticMarkup(createElement(ThreeslashPre, {}, 'ordinary'));
     expect(ordinary).not.toMatch(/Copy PHP|data-threeslash-code/u);
     expect(ordinary).toMatch(/Copy Text/u);

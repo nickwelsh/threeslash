@@ -46,7 +46,7 @@ async function main(): Promise<void> {
         const html = await codeToHtml(analysis.code, {
             lang: 'php',
             theme: 'github-dark',
-            transformers: [transformerThreeslash(analysis)],
+            transformers: [transformerThreeslash(analysis, { matchTwoslashStyling: false })],
         });
         const css = await readFile(new URL('style.css', import.meta.url), 'utf8');
         const client = await readFile(new URL('client.js', import.meta.url), 'utf8');

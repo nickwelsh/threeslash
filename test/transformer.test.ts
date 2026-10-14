@@ -39,14 +39,6 @@ function triggerSource(trigger: Element): string {
         .join('');
 }
 
-function findClass(nodes: Array<Element>, name: string): Element {
-    const node = nodes.find((candidate) => hasClass(candidate, name));
-    if (!node) {
-        throw new Error(`Missing ${name}`);
-    }
-    return node;
-}
-
 function codeStructure(code: Element | undefined) {
     return code?.children.map((child) => {
         if (child.type === 'text') {
@@ -86,7 +78,7 @@ test('wraps complete symbols across syntax tokens and links keyboard-focusable t
     const tree = highlighter.codeToHast(analysis.code, {
         lang: 'php',
         theme: 'github-light',
-        transformers: [transformerThreeslash(analysis)],
+        transformers: [transformerThreeslash(analysis, { matchTwoslashStyling: false })],
     });
     const nodes = descendants(tree);
     const triggers = nodes.filter((node) => hasClass(node, 'threeslash-hover'));
@@ -116,7 +108,7 @@ test.each([
     const html = highlighter.codeToHtml(result.code, {
         lang: 'php',
         themes: { light: 'github-light', dark: 'github-dark' },
-        transformers: [transformerThreeslash(result)],
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: false })],
     });
     expect(html).toMatch(/&#x3C;script/iu);
     expect(elements(parseFragment(html)).filter((node) => node.tagName === 'script')).toHaveLength(0);
@@ -165,7 +157,7 @@ function strlen(string $string): int;
     const tree = highlighter.codeToHast(result.code, {
         lang: 'php',
         themes: { light: 'github-light', dark: 'github-dark' },
-        transformers: [transformerThreeslash(result)],
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: false })],
     });
     const nodes = descendants(tree);
     const decorations = nodes.filter(
@@ -222,7 +214,7 @@ test('neutralizes unsafe Markdown URLs and raw HTML without loading documentatio
     const tree = highlighter.codeToHast(result.code, {
         lang: 'php',
         theme: 'github-light',
-        transformers: [transformerThreeslash(result)],
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: false })],
     });
     const popups = descendants(tree).filter((node) => hasClass(node, 'threeslash-popup'));
     expect(popups).toHaveLength(1);
@@ -243,66 +235,9 @@ test('rejects a mismatched source instead of silently attaching stale hovers', (
         highlighter.codeToHtml('echo "wrong";', {
             lang: 'php',
             theme: 'github-light',
-            transformers: [transformerThreeslash(analysis)],
+            transformers: [transformerThreeslash(analysis, { matchTwoslashStyling: false })],
         }),
     ).toThrow(/matching analysis result/u);
-});
-
-test('twoslash styling uses rich popup sections, query lines, and diagnostic severity classes', () => {
-    const contents =
-        '```php\n<?php\n$greeting = "hello";\n```\n\n**Docs** [manual](https://php.net)\n\n<script>unsafe</script>\n\n[unsafe](javascript:alert%281%29)';
-    const [hover] = analysis.hovers;
-    const [diagnostic] = analysis.diagnostics;
-    if (!hover || !diagnostic) {
-        throw new Error('Missing analysis fixtures');
-    }
-    const result: PhpAnalysis = {
-        ...analysis,
-        hovers: [{ ...hover, contents }],
-        queries: [{ ...hover, position: { line: 0, character: 0 }, contents }],
-        diagnostics: [...analysis.diagnostics, { ...diagnostic, severity: 2 }],
-    };
-    const tree = highlighter.codeToHast(result.code, {
-        lang: 'php',
-        themes: { light: 'github-light', dark: 'github-dark' },
-        transformers: [transformerThreeslash(result, { matchTwoslashStyling: true })],
-    });
-    const nodes = descendants(tree);
-    const pre = nodes.find((node) => node.tagName === 'pre');
-    expect(pre && hasClass(pre, 'twoslash')).toBe(true);
-    expect(pre?.properties['data-threeslash-code']).toBe(result.code);
-    expect(nodes.some((node) => String(node.properties.className).includes('threeslash'))).toBe(false);
-    const trigger = findClass(nodes, 'twoslash-hover');
-    const popup = findClass(descendants(trigger), 'twoslash-popup-container');
-    expect(popup.properties.style).toBe('display: none');
-    expect(trigger.properties.tabIndex).toBe(0);
-    expect(trigger.properties.ariaDescribedBy).toStrictEqual([popup.properties.id]);
-    expect(
-        trigger.children
-            .filter((node) => node !== popup)
-            .map((node) => content(node))
-            .join(''),
-    ).toBe('$greeting');
-    expect(
-        popup.children.filter((node) => node.type === 'element').map((node) => node.properties.className),
-    ).toStrictEqual([['twoslash-popup-code'], ['twoslash-popup-docs']]);
-    const query = findClass(nodes, 'twoslash-query-line');
-    expect(hasClass(query, 'twoslash-meta-line')).toBe(true);
-    expect(findClass(descendants(query), 'twoslash-popup-container').properties.style).toBeUndefined();
-    expect(descendants(query).some((node) => hasClass(node, 'twoslash-popup-arrow'))).toBe(true);
-    const errors = nodes.filter((node) => hasClass(node, 'twoslash-error-line'));
-    expect(errors).toHaveLength(2);
-    expect(errors.some((node) => hasClass(node, 'twoslash-error-level-warning'))).toBe(true);
-    expect(nodes.some((node) => hasClass(node, 'twoslash-error'))).toBe(true);
-    expect(content(popup)).toContain('<script>unsafe</script>');
-    expect(content(popup)).not.toContain('<?php');
-    expect(descendants(popup).some((node) => ['script', 'pre', 'p', 'div'].includes(node.tagName))).toBe(false);
-    expect(
-        descendants(popup)
-            .filter((node) => node.tagName === 'a')
-            .map((node) => node.properties.href),
-    ).toStrictEqual(['https://php.net', undefined]);
-    expect(descendants(popup).some((node) => String(node.properties.style).includes('--shiki-dark'))).toBe(true);
 });
 
 test('twoslash styling uses warning classes for underlines and leaves ordinary Fumadocs blocks alone', async () => {
@@ -328,75 +263,69 @@ test('twoslash styling uses warning classes for underlines and leaves ordinary F
     );
 });
 
-test.each([false, true])(
-    'places annotations between source lines without adding blank lines (twoslash: %s)',
-    (matchTwoslashStyling) => {
-        const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 2 } };
-        const result: PhpAnalysis = {
-            code: "$a = 'Hello World';\n\necho $a;",
-            hovers: [],
-            queries: [
-                { range, position: range.start, contents: 'First query' },
-                { range, position: { line: 2, character: 5 }, contents: 'Last query' },
-            ],
-            diagnostics: [{ range, severity: 1, message: 'Example diagnostic' }],
-        };
-        const tree = highlighter.codeToHast(result.code, {
-            lang: 'php',
-            theme: 'github-light',
-            transformers: [transformerThreeslash(result, { matchTwoslashStyling })],
-        });
-        const code = descendants(tree).find((node) => node.tagName === 'code');
-        expect(codeStructure(code)).toStrictEqual([
-            'source',
-            '\n',
-            'query',
-            'diagnostic',
-            'source',
-            '\n',
-            'source',
-            '\n',
-            'query',
-        ]);
-        const nodes = descendants(tree);
-        const lines = nodes.filter((node) => hasClass(node, 'line'));
-        expect(lines.map((node) => content(node))).toStrictEqual(result.code.split('\n'));
-        const annotations = nodes.filter((node) => Object.hasOwn(node.properties, 'data-threeslash-annotation'));
-        expect(annotations).toHaveLength(3);
-        expect(
-            annotations.every((node) => code?.children.includes(node) === true && node.properties.style === undefined),
-        ).toBe(true);
-        expect(annotations.every((node) => node.tagName === (matchTwoslashStyling ? 'div' : 'span'))).toBe(true);
-    },
-);
+test('custom styling places annotations between source lines without adding blank lines', () => {
+    const range = { start: { line: 0, character: 0 }, end: { line: 0, character: 2 } };
+    const result: PhpAnalysis = {
+        code: "$a = 'Hello World';\n\necho $a;",
+        hovers: [],
+        queries: [
+            { range, position: range.start, contents: 'First query' },
+            { range, position: { line: 2, character: 5 }, contents: 'Last query' },
+        ],
+        diagnostics: [{ range, severity: 1, message: 'Example diagnostic' }],
+    };
+    const tree = highlighter.codeToHast(result.code, {
+        lang: 'php',
+        theme: 'github-light',
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: false })],
+    });
+    const code = descendants(tree).find((node) => node.tagName === 'code');
+    expect(codeStructure(code)).toStrictEqual([
+        'source',
+        '\n',
+        'query',
+        'diagnostic',
+        'source',
+        '\n',
+        'source',
+        '\n',
+        'query',
+    ]);
+    const nodes = descendants(tree);
+    const lines = nodes.filter((node) => hasClass(node, 'line'));
+    expect(lines.map((node) => content(node))).toStrictEqual(result.code.split('\n'));
+    const annotations = nodes.filter((node) => Object.hasOwn(node.properties, 'data-threeslash-annotation'));
+    expect(annotations).toHaveLength(3);
+    expect(
+        annotations.every((node) => code?.children.includes(node) === true && node.properties.style === undefined),
+    ).toBe(true);
+    expect(annotations.every((node) => node.tagName === 'span')).toBe(true);
+});
 
-test.each([false, true])(
-    'does not insert blank lines between consecutive annotated source lines (twoslash: %s)',
-    (matchTwoslashStyling) => {
-        const result: PhpAnalysis = {
-            code: '$a = 1;\n$a++;\necho $a;',
-            hovers: [],
-            diagnostics: [],
-            queries: [0, 1].map((line) => ({
-                range: { start: { line, character: 0 }, end: { line, character: 2 } },
-                position: { line, character: 0 },
-                contents: 'int',
-            })),
-        };
-        const tree = highlighter.codeToHast(result.code, {
-            lang: 'php',
-            theme: 'github-light',
-            transformers: [transformerThreeslash(result, { matchTwoslashStyling })],
-        });
-        const code = descendants(tree).find((node) => node.tagName === 'code');
-        expect(codeStructure(code)).toStrictEqual(['source', '\n', 'query', 'source', '\n', 'query', 'source']);
-        expect(
-            descendants(tree)
-                .filter((node) => hasClass(node, 'line'))
-                .map((node) => content(node)),
-        ).toStrictEqual(result.code.split('\n'));
-    },
-);
+test('custom styling does not insert blank lines between consecutive annotated source lines', () => {
+    const result: PhpAnalysis = {
+        code: '$a = 1;\n$a++;\necho $a;',
+        hovers: [],
+        diagnostics: [],
+        queries: [0, 1].map((line) => ({
+            range: { start: { line, character: 0 }, end: { line, character: 2 } },
+            position: { line, character: 0 },
+            contents: 'int',
+        })),
+    };
+    const tree = highlighter.codeToHast(result.code, {
+        lang: 'php',
+        theme: 'github-light',
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: false })],
+    });
+    const code = descendants(tree).find((node) => node.tagName === 'code');
+    expect(codeStructure(code)).toStrictEqual(['source', '\n', 'query', 'source', '\n', 'query', 'source']);
+    expect(
+        descendants(tree)
+            .filter((node) => hasClass(node, 'line'))
+            .map((node) => content(node)),
+    ).toStrictEqual(result.code.split('\n'));
+});
 
 test('fumadocs transformer leaves ordinary PHP and other languages alone without PHPantom', async () => {
     const transformer = transformerThreeslashFumadocs({ executable: '/must-not-be-started' });

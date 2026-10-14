@@ -39,8 +39,14 @@ If the executable is outside your `PATH`, set `PHPANTOM_BIN` to its absolute
 path. The analyzer does not require PHP or PHPStan.
 
 The Fumadocs integration requires Fumadocs UI 16.17+ and React 19.2+.
+It also uses `fumadocs-twoslash` 4.0.2+ for the native renderer and popup components:
+
+```sh
+pnpm add fumadocs-twoslash
+```
+
 Threeslash tests its MDX integration with Fumadocs Core 16.17 and Fumadocs MDX 15.4.
-React and Fumadocs UI are optional for plain Shiki users.
+React, Fumadocs UI, and Fumadocs Twoslash are optional for plain Shiki users.
 
 ## Fumadocs and MDX
 
@@ -62,23 +68,34 @@ export default defineConfig({
 });
 ```
 
-Import Threeslash's styles after your Fumadocs styles:
+Load the same stylesheet as Fumadocs Twoslash:
 
 ```css
-@import '@nickwelsh/threeslash/style.css';
+@import 'fumadocs-twoslash/twoslash.css';
 ```
 
-Use `ThreeslashPre` for the MDX `pre` component:
+Register Twoslash's popup components and use `ThreeslashPre` for source-aware copying:
 
 ```tsx
 import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { ThreeslashPre } from '@nickwelsh/threeslash/fumadocs';
+import { Popup, PopupContent, PopupTrigger } from 'fumadocs-twoslash/ui';
 
 export const mdxComponents = {
     ...defaultMdxComponents,
     pre: ThreeslashPre,
+    Popup,
+    PopupContent,
+    PopupTrigger,
 };
 ```
+
+If your site already uses Twoslash, keep its existing popup components and
+stylesheet: PHP uses the same `Popup`, `PopupContent`, and `PopupTrigger` names,
+markup, and classes. No Threeslash stylesheet or browser client is needed for
+the default Fumadocs renderer. A custom `pre` component can use
+`data-threeslash-code` for clean source copying, or respect Twoslash's
+`nd-copy-ignore` class like Fumadocs' built-in copy button.
 
 Mark the PHP fences you want to analyze with `threeslash`:
 
@@ -96,8 +113,9 @@ Ordinary fences use Fumadocs' normal highlighter. `ThreeslashPre` retains titles
 and the `noCopy` option. For annotated blocks, its copy button copies the
 visible PHP without hidden setup, type annotations, or diagnostic messages.
 
-The component also opens hover popups above scrolling containers. Tab moves
-between symbols and documentation links. Escape closes a popup. Hover prose
+Twoslash's popup components handle positioning outside scrolling containers,
+pointer interaction, and keyboard controls. Tab focuses a symbol; Enter or
+Space opens its popup, and Escape closes it. Hover prose
 renders as sanitized Markdown, and PHP signatures retain their syntax colors.
 
 ## Annotations
@@ -175,9 +193,10 @@ const html = await codeToHtml(analysis.code, {
 });
 ```
 
-Include `@nickwelsh/threeslash/style.css`. The styles support pointer hover and
-keyboard focus. For popups that escape scrolling containers and support
-Escape, initialize the browser client after the code blocks mount:
+Plain Shiki uses `@shikijs/twoslash`'s native rich renderer by default. Include
+`@shikijs/twoslash/style-rich.css` for pointer hovers. For keyboard focus,
+popups that escape scrolling containers, and Escape support, initialize the
+optional browser client after the code blocks mount:
 
 ```ts
 import { enhanceThreeslash } from '@nickwelsh/threeslash/client';
@@ -189,42 +208,36 @@ const cleanup = enhanceThreeslash(document);
 `transformerThreeslashFumadocs` requires Fumadocs' asynchronous preparation hook.
 Use `analyzePhp` and `transformerThreeslash` for other Shiki integrations.
 
-## Match Twoslash styling
+## Styling and overrides
 
-Set `matchTwoslashStyling: true` to emit Twoslash's rich-renderer classes and
-popup structure for PHP hovers, type queries, and diagnostics:
+Twoslash rendering is the default. Fumadocs delegates to `fumadocs-twoslash`
+and its React popup components; plain Shiki delegates to `@shikijs/twoslash`'s
+rich renderer. Existing Twoslash CSS and component overrides apply to PHP too.
+
+Set `matchTwoslashStyling: false` to opt into the separate Threeslash renderer:
 
 ```ts
 // Fumadocs
 transformerThreeslashFumadocs({
-    matchTwoslashStyling: true,
+    matchTwoslashStyling: false,
 });
 
 // Plain Shiki
 transformerThreeslash(analysis, {
-    matchTwoslashStyling: true,
+    matchTwoslashStyling: false,
 });
 ```
 
-When your site already loads Twoslash's rich-renderer CSS, you can omit
-`@nickwelsh/threeslash/style.css`. Otherwise, install `@shikijs/twoslash` and
-load its stylesheet:
+This opt-out uses Threeslash's classes, stylesheet, and browser client:
 
 ```css
-@import '@shikijs/twoslash/style-rich.css';
+@import '@nickwelsh/threeslash/style.css';
 ```
 
-Fumadocs' base styles alone do not include Twoslash's popup CSS. This option
-targets the `@shikijs/twoslash` rich renderer; custom Twoslash renderers may use
-different markup. Your existing Twoslash CSS variables also theme these blocks.
-
-Keep using `ThreeslashPre` in Fumadocs: it detects the emitted classes, uses
-Fumadocs' button styles, and preserves clean source copying. For plain Shiki,
-initialize `enhanceThreeslash` as shown above for pointer and keyboard hovers,
-Escape, and popups outside scrolling containers with Twoslash's stylesheet.
-Twoslash hover popups are hidden in the generated HTML to prevent a flash before
-the client starts. Inline queries and diagnostics remain visible without the
-client. The default remains Threeslash styling.
+Override the `--threeslash-*` CSS variables or classes to customize this mode.
+`ThreeslashPre` detects it and initializes the custom browser client; other
+integrations can call `enhanceThreeslash` directly. Inline queries and
+diagnostics remain visible without JavaScript in both modes.
 
 ## Analyzer options and results
 
