@@ -15,6 +15,18 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
     let describedBy: string | null = null;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const enhanced = new Set<HTMLElement>();
+    const hiddenPopups = new Map<HTMLElement, string>();
+
+    function hideEmbeddedPopups(root: ParentNode) {
+        for (const embedded of root.querySelectorAll<HTMLElement>(
+            '[data-threeslash-code] .twoslash-hover > .twoslash-popup-container',
+        )) {
+            if (!hiddenPopups.has(embedded)) {
+                hiddenPopups.set(embedded, embedded.style.visibility);
+                embedded.style.visibility = 'hidden';
+            }
+        }
+    }
 
     function hide() {
         if (timer) {
@@ -54,7 +66,7 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         if (!(target instanceof view.Element)) {
             return undefined;
         }
-        const trigger = target.closest<HTMLElement>('.threeslash-hover');
+        const trigger = target.closest<HTMLElement>('.threeslash-hover, [data-threeslash-code] .twoslash-hover');
         return trigger && container.contains(trigger) ? trigger : undefined;
     }
 
@@ -65,7 +77,7 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         if (active === trigger || dismissed === trigger) {
             return;
         }
-        const original = trigger.querySelector<HTMLElement>('.threeslash-popup');
+        const original = trigger.querySelector<HTMLElement>('.threeslash-popup, .twoslash-popup-container');
         if (!original) {
             return;
         }
@@ -74,7 +86,8 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
             return;
         }
         hide();
-        const pre = trigger.closest<HTMLElement>('.threeslash');
+        const twoslash = trigger.classList.contains('twoslash-hover');
+        const pre = trigger.closest<HTMLElement>('[data-threeslash-code]');
         if (pre) {
             pre.dataset['threeslashEnhanced'] = '';
             enhanced.add(pre);
@@ -82,12 +95,42 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         active = trigger;
         describedBy = trigger.getAttribute('aria-describedby');
         overlay = doc.createElement('div');
-        overlay.className = 'threeslash';
-        overlay.style.colorScheme = view.getComputedStyle(trigger).colorScheme;
+        overlay.className = twoslash ? 'twoslash shiki' : 'threeslash';
+        const computed = view.getComputedStyle(trigger);
+        overlay.style.colorScheme = computed.colorScheme;
         popup = cloned;
-        popup.classList.add('threeslash-floating');
+        if (twoslash) {
+            // Preserve the site's Twoslash theme when moving into the top layer.
+            for (const name of computed) {
+                if (name.startsWith('--twoslash-') || name.startsWith('--shiki-')) {
+                    overlay.style.setProperty(name, computed.getPropertyValue(name));
+                }
+            }
+            overlay.style.font = computed.font;
+            overlay.style.color = computed.color;
+            // Keep CSS hover popups hidden after Escape until enhancement ends.
+            if (pre) {
+                hideEmbeddedPopups(pre);
+            }
+            Object.assign(popup.style, {
+                position: 'fixed',
+                inset: 'auto',
+                margin: '0',
+                transform: 'none',
+                opacity: '1',
+                visibility: 'visible',
+                pointerEvents: 'auto',
+                width: 'max-content',
+                maxWidth: 'min(38rem, 80vw)',
+                maxHeight: 'calc(100dvh - 24px)',
+                overflow: 'auto',
+                whiteSpace: 'normal',
+            });
+        } else {
+            popup.classList.add('threeslash-floating');
+        }
         popup.id = `${original.id}-active`;
-        popup.style.display = 'block';
+        popup.style.display = twoslash ? 'inline-flex' : 'block';
         trigger.setAttribute('aria-describedby', popup.id);
         overlay.append(popup);
         doc.body.append(overlay);
@@ -183,6 +226,9 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         }
     }
 
+    // Twoslash hides inactive popups with opacity; visibility also removes
+    // their links from the tab order and accessibility tree while enhanced.
+    hideEmbeddedPopups(container);
     doc.addEventListener('pointerover', pointerOver);
     doc.addEventListener('pointerout', pointerOut);
     doc.addEventListener('focusin', focusIn);
@@ -195,6 +241,9 @@ export function enhanceThreeslash(container: HTMLElement | Document = document):
         hide();
         for (const pre of enhanced) {
             delete pre.dataset['threeslashEnhanced'];
+        }
+        for (const [embedded, visibility] of hiddenPopups) {
+            embedded.style.visibility = visibility;
         }
         doc.removeEventListener('pointerover', pointerOver);
         doc.removeEventListener('pointerout', pointerOut);

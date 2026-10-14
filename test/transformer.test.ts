@@ -39,6 +39,14 @@ function triggerSource(trigger: Element): string {
         .join('');
 }
 
+function findClass(nodes: Array<Element>, name: string): Element {
+    const node = nodes.find((candidate) => hasClass(candidate, name));
+    if (!node) {
+        throw new Error(`Missing ${name}`);
+    }
+    return node;
+}
+
 const analysis: PhpAnalysis = {
     code: '$greeting = "hello"; echo $greeting;',
     hovers: [
@@ -226,6 +234,84 @@ test('rejects a mismatched source instead of silently attaching stale hovers', (
             transformers: [transformerThreeslash(analysis)],
         }),
     ).toThrow(/matching analysis result/u);
+});
+
+test('twoslash styling uses rich popup sections, query lines, and diagnostic severity classes', () => {
+    const contents =
+        '```php\n<?php\n$greeting = "hello";\n```\n\n**Docs** [manual](https://php.net)\n\n<script>unsafe</script>\n\n[unsafe](javascript:alert%281%29)';
+    const [hover] = analysis.hovers;
+    const [diagnostic] = analysis.diagnostics;
+    if (!hover || !diagnostic) {
+        throw new Error('Missing analysis fixtures');
+    }
+    const result: PhpAnalysis = {
+        ...analysis,
+        hovers: [{ ...hover, contents }],
+        queries: [{ ...hover, position: { line: 0, character: 0 }, contents }],
+        diagnostics: [...analysis.diagnostics, { ...diagnostic, severity: 2 }],
+    };
+    const tree = highlighter.codeToHast(result.code, {
+        lang: 'php',
+        themes: { light: 'github-light', dark: 'github-dark' },
+        transformers: [transformerThreeslash(result, { matchTwoslashStyling: true })],
+    });
+    const nodes = descendants(tree);
+    const pre = nodes.find((node) => node.tagName === 'pre');
+    expect(pre && hasClass(pre, 'twoslash')).toBe(true);
+    expect(pre?.properties['data-threeslash-code']).toBe(result.code);
+    expect(nodes.some((node) => String(node.properties.className).includes('threeslash'))).toBe(false);
+    const trigger = findClass(nodes, 'twoslash-hover');
+    const popup = findClass(descendants(trigger), 'twoslash-popup-container');
+    expect(trigger.properties.tabIndex).toBe(0);
+    expect(trigger.properties.ariaDescribedBy).toStrictEqual([popup.properties.id]);
+    expect(
+        trigger.children
+            .filter((node) => node !== popup)
+            .map((node) => content(node))
+            .join(''),
+    ).toBe('$greeting');
+    expect(
+        popup.children.filter((node) => node.type === 'element').map((node) => node.properties.className),
+    ).toStrictEqual([['twoslash-popup-code'], ['twoslash-popup-docs']]);
+    const query = findClass(nodes, 'twoslash-query-line');
+    expect(hasClass(query, 'twoslash-meta-line')).toBe(true);
+    expect(descendants(query).some((node) => hasClass(node, 'twoslash-popup-arrow'))).toBe(true);
+    const errors = nodes.filter((node) => hasClass(node, 'twoslash-error-line'));
+    expect(errors).toHaveLength(2);
+    expect(errors.some((node) => hasClass(node, 'twoslash-error-level-warning'))).toBe(true);
+    expect(nodes.some((node) => hasClass(node, 'twoslash-error'))).toBe(true);
+    expect(content(popup)).toContain('<script>unsafe</script>');
+    expect(content(popup)).not.toContain('<?php');
+    expect(descendants(popup).some((node) => ['script', 'pre', 'p', 'div'].includes(node.tagName))).toBe(false);
+    expect(
+        descendants(popup)
+            .filter((node) => node.tagName === 'a')
+            .map((node) => node.properties.href),
+    ).toStrictEqual(['https://php.net', undefined]);
+    expect(descendants(popup).some((node) => String(node.properties.style).includes('--shiki-dark'))).toBe(true);
+});
+
+test('twoslash styling uses warning classes for underlines and leaves ordinary Fumadocs blocks alone', async () => {
+    const html = highlighter.codeToHtml(analysis.code, {
+        lang: 'php',
+        theme: 'github-light',
+        transformers: [
+            transformerThreeslash(
+                { ...analysis, diagnostics: analysis.diagnostics.map((node) => ({ ...node, severity: 2 })) },
+                { matchTwoslashStyling: true },
+            ),
+        ],
+    });
+    expect(html).toContain('twoslash-error twoslash-error-level-warning');
+    const transformer = transformerThreeslashFumadocs({
+        matchTwoslashStyling: true,
+        executable: '/must-not-be-started',
+    });
+    const options = { lang: 'php', theme: 'github-light', meta: { __raw: '' } };
+    await transformer._fd_prepare(analysis.code, options);
+    expect(highlighter.codeToHtml(analysis.code, { ...options, transformers: [transformer] })).not.toContain(
+        'twoslash',
+    );
 });
 
 test('fumadocs transformer leaves ordinary PHP and other languages alone without PHPantom', async () => {

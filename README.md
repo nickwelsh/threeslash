@@ -189,6 +189,41 @@ const cleanup = enhanceThreeslash(document);
 `transformerThreeslashFumadocs` requires Fumadocs' asynchronous preparation hook.
 Use `analyzePhp` and `transformerThreeslash` for other Shiki integrations.
 
+## Match Twoslash styling
+
+Set `matchTwoslashStyling: true` to emit Twoslash's rich-renderer classes and
+popup structure for PHP hovers, type queries, and diagnostics:
+
+```ts
+// Fumadocs
+transformerThreeslashFumadocs({
+    matchTwoslashStyling: true,
+});
+
+// Plain Shiki
+transformerThreeslash(analysis, {
+    matchTwoslashStyling: true,
+});
+```
+
+When your site already loads Twoslash's rich-renderer CSS, you can omit
+`@nickwelsh/threeslash/style.css`. Otherwise, install `@shikijs/twoslash` and
+load its stylesheet:
+
+```css
+@import '@shikijs/twoslash/style-rich.css';
+```
+
+Fumadocs' base styles alone do not include Twoslash's popup CSS. This option
+targets the `@shikijs/twoslash` rich renderer; custom Twoslash renderers may use
+different markup. Your existing Twoslash CSS variables also theme these blocks.
+
+Keep using `ThreeslashPre` in Fumadocs: it detects the emitted classes, uses
+Fumadocs' button styles, and preserves clean source copying. For plain Shiki,
+initialize `enhanceThreeslash` as shown above to support keyboard focus,
+Escape, and popups outside scrolling containers with Twoslash's stylesheet.
+The default remains Threeslash styling.
+
 ## Analyzer options and results
 
 Both `analyzePhp` and `transformerThreeslashFumadocs` accept these options:

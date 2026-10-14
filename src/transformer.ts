@@ -15,6 +15,13 @@ interface RenderState {
     id: string;
 }
 
+export interface ThreeslashRendererOptions {
+    /** Emit Twoslash rich-renderer classes and markup. Load Twoslash's CSS instead of Threeslash's. */
+    matchTwoslashStyling?: boolean;
+}
+
+export type FumadocsThreeslashOptions = PhpOptions & ThreeslashRendererOptions;
+
 declare module 'hast' {
     interface ElementData {
         threeslashDecoration?: boolean;
@@ -35,16 +42,20 @@ function element(className: string, children: Array<ElementContent>, properties:
     return {
         type: 'element',
         tagName: 'span',
-        properties: { className: className.split(' '), ...properties },
+        properties: { ...(className ? { className: className.split(' ') } : {}), ...properties },
         children,
     };
 }
 
-function hoverCode(ctx: ShikiTransformerContext, node: Element): Element {
+function hoverCode(ctx: ShikiTransformerContext, node: Element, matchTwoslashStyling: boolean): Element {
     const code = node.children.find((child): child is Element => child.type === 'element');
     const value = code?.children.map((child) => (child.type === 'text' ? child.value : '')).join('') ?? '';
     if (!Array.isArray(code?.properties.className) || !code.properties.className.includes('language-php')) {
-        return element('threeslash-signature', [text(value.trimEnd())]);
+        return element(
+            matchTwoslashStyling ? 'twoslash-popup-code' : 'threeslash-signature',
+            [text(value.trimEnd())],
+            matchTwoslashStyling ? { style: 'white-space: pre-wrap' } : {},
+        );
     }
     const signature = value.replace(/^<\?php\s*/u, '').trim();
     const highlighted = ctx.codeToHast(signature, {
@@ -62,20 +73,45 @@ function hoverCode(ctx: ShikiTransformerContext, node: Element): Element {
     for (const child of highlightedCode?.children ?? []) {
         if (child.type === 'element') {
             delete child.properties['class'];
-            child.properties.className = ['threeslash-signature-line'];
+            child.properties.className = matchTwoslashStyling ? [] : ['threeslash-signature-line'];
+            if (matchTwoslashStyling) {
+                child.properties.style = `${child.properties.style ?? ''}; display: block; white-space: pre-wrap`;
+            }
         }
     }
-    return element('threeslash-signature', highlightedCode?.children ?? [text(signature)]);
+    return element(
+        matchTwoslashStyling ? 'twoslash-popup-code' : 'threeslash-signature',
+        highlightedCode?.children ?? [text(signature)],
+    );
 }
 
 /** Render sanitized Markdown using phrasing content, since popups live inside code spans. */
-function hoverContents(ctx: ShikiTransformerContext, contents: string): Array<ElementContent> {
+function hoverContents(
+    ctx: ShikiTransformerContext,
+    contents: string,
+    matchTwoslashStyling: boolean,
+): Array<ElementContent> {
     const root = sanitize(
         toHast(fromMarkdown(contents), {
             // Treat embedded HTML as literal documentation, never executable markup.
             handlers: { html: (_state, node: { value: string }) => text(node.value) },
         }),
     );
+
+    function block(
+        className: string,
+        children: Array<ElementContent>,
+        properties: Element['properties'] = {},
+        style = 'display: block; white-space: normal',
+    ): Element {
+        if (matchTwoslashStyling) {
+            return element('', children, {
+                ...properties,
+                style: [properties.style, style].filter(Boolean).join('; '),
+            });
+        }
+        return element(className, children, properties);
+    }
 
     function render(node: ElementContent): ElementContent {
         if (node.type !== 'element') {
@@ -85,28 +121,43 @@ function hoverContents(ctx: ShikiTransformerContext, contents: string): Array<El
             return text(node.properties.alt ?? '');
         }
         if (node.tagName === 'pre') {
-            return hoverCode(ctx, node);
+            return hoverCode(ctx, node, matchTwoslashStyling);
         }
         const children = node.children.map(render);
         switch (node.tagName) {
             case 'p': {
-                return element('threeslash-docs', children);
+                return block('threeslash-docs', children);
             }
             case 'ul':
             case 'ol': {
-                return element(`threeslash-list threeslash-${node.tagName}`, children, {
-                    role: 'list',
-                    style: `counter-reset: list-item ${Number(node.properties.start ?? 1) - 1}`,
-                });
+                return block(
+                    `threeslash-list threeslash-${node.tagName}`,
+                    children,
+                    {
+                        role: 'list',
+                        style: `counter-reset: list-item ${Number(node.properties.start ?? 1) - 1}`,
+                    },
+                    `display: block; white-space: normal; padding-left: 1.5em; list-style-type: ${node.tagName === 'ol' ? 'decimal' : 'disc'}`,
+                );
             }
             case 'li': {
-                return element('threeslash-list-item', children, { role: 'listitem' });
+                return block('threeslash-list-item', children, { role: 'listitem' }, 'display: list-item');
             }
             case 'blockquote': {
-                return element('threeslash-quote', children);
+                return block(
+                    'threeslash-quote',
+                    children,
+                    {},
+                    'display: block; white-space: normal; padding-left: 0.75em; border-left: 2px solid var(--twoslash-border-color)',
+                );
             }
             case 'hr': {
-                return element('threeslash-rule', [], { role: 'separator' });
+                return block(
+                    'threeslash-rule',
+                    [],
+                    { role: 'separator' },
+                    'display: block; border-top: 1px solid var(--twoslash-border-color)',
+                );
             }
             case 'h1':
             case 'h2':
@@ -114,7 +165,12 @@ function hoverContents(ctx: ShikiTransformerContext, contents: string): Array<El
             case 'h4':
             case 'h5':
             case 'h6': {
-                return element('threeslash-heading', children, { role: 'heading', ariaLevel: Number(node.tagName[1]) });
+                return block(
+                    'threeslash-heading',
+                    children,
+                    { role: 'heading', ariaLevel: Number(node.tagName[1]) },
+                    'display: block; white-space: normal; font-weight: 600',
+                );
             }
             default: {
                 return { ...node, children };
@@ -122,9 +178,37 @@ function hoverContents(ctx: ShikiTransformerContext, contents: string): Array<El
         }
     }
 
-    return root.type === 'root'
-        ? root.children.flatMap((node) => (node.type === 'element' || node.type === 'text' ? [render(node)] : []))
-        : [];
+    const children =
+        root.type === 'root'
+            ? root.children.flatMap((node) => (node.type === 'element' || node.type === 'text' ? [render(node)] : []))
+            : [];
+    if (!matchTwoslashStyling) {
+        return children;
+    }
+    // Twoslash styles signatures and prose as separate sections. Keep block
+    // layout on spans so documentation remains valid inside highlighted code.
+    const sections: Array<ElementContent> = [];
+    let docs: Element | undefined;
+    for (const child of children) {
+        if (child.type === 'text' && !child.value.trim()) {
+            continue;
+        }
+        if (
+            child.type === 'element' &&
+            Array.isArray(child.properties.className) &&
+            child.properties.className.includes('twoslash-popup-code')
+        ) {
+            sections.push(child);
+            docs = undefined;
+        } else {
+            if (!docs) {
+                docs = element('twoslash-popup-docs', []);
+                sections.push(docs);
+            }
+            docs.children.push(child);
+        }
+    }
+    return sections;
 }
 
 function covers(range: Range, line: number, column: number, length: number): boolean {
@@ -144,7 +228,29 @@ function offset(code: string, line: number, character: number): number {
     return result + character;
 }
 
-function renderingHooks(): ShikiTransformer {
+function diagnosticClass(isError: boolean, matchTwoslashStyling: boolean, annotation = false): string {
+    if (matchTwoslashStyling) {
+        const base = annotation ? 'twoslash-meta-line twoslash-error-line' : 'twoslash-error';
+        return `${base}${isError ? '' : ' twoslash-error-level-warning'}`;
+    }
+    if (annotation) {
+        return `threeslash-diagnostic ${isError ? 'threeslash-error-message' : 'threeslash-warning-message'}`;
+    }
+    return isError ? 'threeslash-error' : 'threeslash-warning';
+}
+
+function queryAnnotation(ctx: ShikiTransformerContext, contents: string, matchTwoslashStyling: boolean): Element {
+    const children = hoverContents(ctx, contents, matchTwoslashStyling);
+    return element(
+        matchTwoslashStyling ? 'twoslash-meta-line twoslash-query-line' : 'threeslash-query',
+        matchTwoslashStyling
+            ? [element('twoslash-popup-container', [element('twoslash-popup-arrow', []), ...children])]
+            : children,
+        { 'data-threeslash-annotation': 'query', ...(matchTwoslashStyling ? { style: 'display: block' } : {}) },
+    );
+}
+
+function renderingHooks({ matchTwoslashStyling = false }: ThreeslashRendererOptions): ShikiTransformer {
     return {
         name: 'threeslash',
         tokens(tokens) {
@@ -162,7 +268,7 @@ function renderingHooks(): ShikiTransformer {
         },
         pre(node) {
             if (this.meta.threeslash) {
-                this.addClassToHast(node, 'threeslash');
+                this.addClassToHast(node, matchTwoslashStyling ? 'twoslash' : 'threeslash');
                 node.properties['data-threeslash-code'] = this.meta.threeslash.analysis.code;
             }
         },
@@ -179,9 +285,10 @@ function renderingHooks(): ShikiTransformer {
             if (diagnostics.length > 0) {
                 this.addClassToHast(
                     node,
-                    diagnostics.some((diagnostic) => diagnostic.severity === 1)
-                        ? 'threeslash-error'
-                        : 'threeslash-warning',
+                    diagnosticClass(
+                        diagnostics.some((diagnostic) => diagnostic.severity === 1),
+                        matchTwoslashStyling,
+                    ),
                 );
             }
         },
@@ -218,24 +325,30 @@ function renderingHooks(): ShikiTransformer {
                     continue;
                 }
                 const id = `${state.id}-${line}-${index}`;
-                const popup = element('threeslash-popup', hoverContents(this, hover.contents), {
-                    id,
-                    role: 'dialog',
-                    ariaLabel: 'PHP documentation',
-                });
+                const popup = element(
+                    matchTwoslashStyling ? 'twoslash-popup-container' : 'threeslash-popup',
+                    hoverContents(this, hover.contents, matchTwoslashStyling),
+                    {
+                        id,
+                        role: 'dialog',
+                        ariaLabel: 'PHP documentation',
+                    },
+                );
                 popup.data = { threeslashDecoration: true };
-                const trigger = element('threeslash-hover', [...selected, popup], {
-                    tabIndex: 0,
-                    ariaDescribedBy: [id],
-                    ariaHasPopup: 'dialog',
-                });
+                const trigger = element(
+                    matchTwoslashStyling ? 'twoslash-hover' : 'threeslash-hover',
+                    [...selected, popup],
+                    {
+                        tabIndex: 0,
+                        ariaDescribedBy: [id],
+                        ariaHasPopup: 'dialog',
+                    },
+                );
                 children.splice(insertion, 0, trigger);
                 node.children = children;
             }
             for (const query of state.analysis.queries.filter((candidate) => candidate.position.line === line - 1)) {
-                const annotation = element('threeslash-query', hoverContents(this, query.contents), {
-                    'data-threeslash-annotation': 'query',
-                });
+                const annotation = queryAnnotation(this, query.contents, matchTwoslashStyling);
                 annotation.data = { threeslashDecoration: true };
                 node.children.push(annotation);
             }
@@ -243,9 +356,12 @@ function renderingHooks(): ShikiTransformer {
                 (candidate) => candidate.range.start.line === line - 1,
             )) {
                 const annotation = element(
-                    `threeslash-diagnostic ${diagnostic.severity === 1 ? 'threeslash-error-message' : 'threeslash-warning-message'}`,
+                    diagnosticClass(diagnostic.severity === 1, matchTwoslashStyling, true),
                     [text(`${lspText(diagnostic.message)} [${diagnostic.code ?? diagnostic.source ?? 'PHP'}]`)],
-                    { 'data-threeslash-annotation': 'diagnostic' },
+                    {
+                        'data-threeslash-annotation': 'diagnostic',
+                        ...(matchTwoslashStyling ? { style: 'display: block' } : {}),
+                    },
                 );
                 annotation.data = { threeslashDecoration: true };
                 node.children.push(annotation);
@@ -265,9 +381,12 @@ function sourceLength(node: ElementContent): number {
 }
 
 /** For plain Shiki: analyze first, then highlight analysis.code with this transformer. */
-export function transformerThreeslash(analysis: PhpAnalysis): ShikiTransformer {
+export function transformerThreeslash(
+    analysis: PhpAnalysis,
+    options: ThreeslashRendererOptions = {},
+): ShikiTransformer {
     return {
-        ...renderingHooks(),
+        ...renderingHooks(options),
         preprocess(code) {
             if (code !== analysis.code) {
                 throw new Error('Threeslash: highlight analysis.code with the matching analysis result.');
@@ -282,12 +401,12 @@ export interface FumadocsThreeslashTransformer extends ShikiTransformer {
 }
 
 /** Async preparation for Fumadocs' rehypeCode pipeline. Only `php threeslash` fences opt in. */
-export function transformerThreeslashFumadocs(options: PhpOptions = {}): FumadocsThreeslashTransformer {
+export function transformerThreeslashFumadocs(options: FumadocsThreeslashOptions = {}): FumadocsThreeslashTransformer {
     const prepared = new WeakMap<object, { code: string; analysis: PhpAnalysis }>();
     let pending: Promise<unknown> = Promise.resolve();
     let pendingSnippets = 0;
     return {
-        ...renderingHooks(),
+        ...renderingHooks(options),
         async _fd_prepare(code, codeOptions) {
             if (codeOptions.lang !== 'php' || !/(?:^|\s)threeslash(?:\s|$)/u.test(codeOptions.meta?.__raw ?? '')) {
                 return;

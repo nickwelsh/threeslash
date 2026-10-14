@@ -22,3 +22,21 @@ test('fumadocs noCopy is respected for annotated blocks', () => {
     );
     expect(html).not.toMatch(/Copy PHP/u);
 });
+
+test('fumadocs wrapper keeps Twoslash styling without Threeslash CSS classes', () => {
+    const html = renderToStaticMarkup(
+        createElement(
+            ThreeslashPre,
+            {
+                'data-threeslash-code': '$value = 1;',
+                className: 'shiki twoslash',
+                title: 'example.php',
+            },
+            'rendered',
+        ),
+    );
+    expect(html).toMatch(/<pre[^>]*class="[^"]*twoslash/u);
+    expect(html).toContain('Copy PHP');
+    expect(html).not.toMatch(/class="[^"]*threeslash/u);
+    expect(html).toContain('data-threeslash-code="\u0024value = 1;"');
+});

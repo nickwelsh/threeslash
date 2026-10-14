@@ -3,25 +3,37 @@ import { evaluate } from '@mdx-js/mdx';
 import { createElement } from 'react';
 import { Fragment, jsx, jsxs } from 'react/jsx-runtime';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { ThreeslashPre } from '../../src/fumadocs.js';
 import { applyMdxPreset, defineConfig } from 'fumadocs-mdx/config';
 import { rehypeCodeDefaultOptions } from 'fumadocs-core/mdx-plugins';
 import { transformerThreeslashFumadocs } from '../../src/transformer.js';
 
-const transformer = transformerThreeslashFumadocs({ executable: process.env['PHPANTOM_BIN'] ?? 'phpantom_lsp' });
-const config = defineConfig({
-    mdxOptions: {
-        rehypeCodeOptions: {
-            themes: { light: 'github-light', dark: 'github-dark' },
-            transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), transformer],
+function createConfig(matchTwoslashStyling: boolean) {
+    const transformer = transformerThreeslashFumadocs({
+        executable: process.env['PHPANTOM_BIN'] ?? 'phpantom_lsp',
+        matchTwoslashStyling,
+    });
+    return defineConfig({
+        mdxOptions: {
+            rehypeCodeOptions: {
+                themes: { light: 'github-light', dark: 'github-dark' },
+                transformers: [...(rehypeCodeDefaultOptions.transformers ?? []), transformer],
+            },
         },
-    },
-});
+    });
+}
 
-async function render(source: string): Promise<string> {
-    const preset = typeof config.mdxOptions === 'function' ? await config.mdxOptions() : config.mdxOptions;
+const config = createConfig(false);
+const twoslashConfig = createConfig(true);
+
+async function render(source: string, matchTwoslashStyling = false): Promise<string> {
+    const selected = matchTwoslashStyling ? twoslashConfig : config;
+    const preset = typeof selected.mdxOptions === 'function' ? await selected.mdxOptions() : selected.mdxOptions;
     const options = await applyMdxPreset(preset)('runtime');
     const { default: Content } = await evaluate(source, { ...options, Fragment, jsx, jsxs });
-    return renderToStaticMarkup(createElement(Content));
+    return renderToStaticMarkup(
+        createElement(Content, matchTwoslashStyling ? { components: { pre: ThreeslashPre } } : {}),
+    );
 }
 
 test('compiles real Fumadocs MDX with annotated and ordinary fences, titles, and dual themes', async () => {
@@ -60,4 +72,22 @@ strlen([]);
 test('fails a Fumadocs build on unexpected PHP errors and recovers on the next compilation', async () => {
     await expect(render('```php threeslash\nstrlen([]);\n```')).rejects.toThrow(/type_mismatch_argument/u);
     await expect(render('```php threeslash\nstrlen("ok");\n```')).resolves.toMatch(/threeslash-hover/u);
+});
+
+test('compiles Twoslash-styled PHP through the Fumadocs transformer and pre component', async () => {
+    const html = await render(
+        '```php threeslash title="example.php"\n$name = "Ada";\n// ^?\n// @errors: type_mismatch_argument\nstrlen([]);\n```',
+        true,
+    );
+    expect(html).toContain('twoslash-hover');
+    expect(html).toContain('twoslash-popup-container');
+    expect(html).toContain('twoslash-popup-code');
+    expect(html).toContain('twoslash-popup-docs');
+    expect(html).toContain('twoslash-query-line');
+    expect(html).toContain('twoslash-error-line');
+    expect(html).toContain('data-threeslash-code=');
+    expect(html).toContain('Copy PHP');
+    expect(html).toMatch(/<pre[^>]*class="[^"]*twoslash/u);
+    expect(html).not.toMatch(/class="[^"]*threeslash/u);
+    expect(html).not.toContain('@errors');
 });
