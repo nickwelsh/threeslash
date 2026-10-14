@@ -1,0 +1,16 @@
+{
+    "name": "threeslash/laravel-tests",
+    "description": "Installed Illuminate sources for Laravel integration tests.",
+    "license": "MIT",
+    "require": {
+        "illuminate/database": "^12.0",
+        "illuminate/support": "^12.0"
+    },
+    "config": {
+        "allow-plugins": false,
+        "platform": {
+            "php": "8.3.0"
+        },
+        "sort-packages": true
+    }
+}

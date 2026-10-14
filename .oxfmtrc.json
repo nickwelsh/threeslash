@@ -1,0 +1,28 @@
+{
+    "$schema": "./node_modules/oxfmt/configuration_schema.json",
+    "htmlWhitespaceSensitivity": "css",
+    "ignorePatterns": [
+        ".agents/**",
+        "skills-lock.json",
+        "node_modules/**",
+        "dist/**",
+        "coverage/**",
+        ".idea/**",
+        ".pnpm-store/**",
+        "pnpm-lock.yaml"
+    ],
+    "overrides": [
+        {
+            "files": ["**/*.{yaml,yml}"],
+            "options": {
+                "tabWidth": 2
+            }
+        }
+    ],
+    "printWidth": 120,
+    "semi": true,
+    "singleAttributePerLine": false,
+    "singleQuote": true,
+    "sortPackageJson": true,
+    "tabWidth": 4
+}

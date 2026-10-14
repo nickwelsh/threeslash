@@ -1,0 +1,200 @@
+.threeslash {
+    --threeslash-border: light-dark(#d6d9df, #3c414c);
+    --threeslash-background: light-dark(#fff, #1b1e26);
+    --threeslash-foreground: light-dark(#263244, #dce3ef);
+    --threeslash-muted: light-dark(#586579, #a3b0c5);
+    --threeslash-accent: light-dark(#5845b9, #b5a6ff);
+    --threeslash-error: light-dark(#b42334, #ff8995);
+    --threeslash-warning: light-dark(#855a08, #e7c26a);
+
+    overflow: visible;
+}
+
+.threeslash .threeslash-hover {
+    position: relative;
+    border-radius: 2px;
+}
+
+.threeslash .threeslash-hover:hover {
+    background: color-mix(in srgb, var(--threeslash-accent) 12%, transparent);
+}
+
+.threeslash .threeslash-hover:focus-visible {
+    outline: 2px solid var(--threeslash-accent);
+    outline-offset: 2px;
+}
+
+.threeslash .threeslash-popup {
+    display: none;
+    position: absolute;
+    z-index: 30;
+    left: 0;
+    bottom: 100%;
+    width: max-content;
+    max-width: min(38rem, 80vw);
+    max-height: 24rem;
+    overflow: auto;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--threeslash-border);
+    border-radius: 0.5rem;
+    background: var(--threeslash-background);
+    color: var(--threeslash-foreground);
+    box-shadow: 0 6px 24px #0002;
+    font-size: 0.8rem;
+    line-height: 1.65;
+    white-space: normal;
+}
+
+.threeslash .threeslash-hover:hover > .threeslash-popup,
+.threeslash .threeslash-hover:focus-within > .threeslash-popup {
+    display: block;
+}
+
+.threeslash[data-threeslash-enhanced] .threeslash-hover > .threeslash-popup {
+    display: none;
+}
+
+.threeslash .threeslash-floating {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    max-height: min(24rem, calc(100dvh - 24px));
+}
+
+.threeslash .threeslash-docs {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.threeslash .threeslash-popup a,
+.threeslash .threeslash-query a {
+    color: var(--threeslash-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.threeslash .threeslash-popup code,
+.threeslash .threeslash-query code {
+    padding: 0.1em 0.25em;
+    border-radius: 0.2rem;
+    background: color-mix(in srgb, var(--threeslash-muted) 12%, transparent);
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    font-size: 0.95em;
+}
+
+.threeslash .threeslash-list,
+.threeslash .threeslash-quote,
+.threeslash .threeslash-heading,
+.threeslash .threeslash-rule {
+    display: block;
+    white-space: normal;
+}
+
+.threeslash .threeslash-list {
+    padding-left: 1.5em;
+    list-style-type: disc;
+}
+
+.threeslash .threeslash-ol {
+    list-style-type: decimal;
+}
+
+.threeslash .threeslash-list-item {
+    display: list-item;
+}
+
+.threeslash .threeslash-quote {
+    padding-left: 0.75em;
+    border-left: 2px solid var(--threeslash-border);
+    color: var(--threeslash-muted);
+}
+
+.threeslash .threeslash-heading {
+    font-weight: 600;
+}
+
+.threeslash .threeslash-rule {
+    border-top: 1px solid var(--threeslash-border);
+}
+
+.threeslash [style*='--shiki-light'] {
+    color: light-dark(var(--shiki-light), var(--shiki-dark, var(--shiki-light)));
+}
+
+.threeslash .threeslash-signature {
+    display: block;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.threeslash-popup > * + *,
+.threeslash-query > * + * {
+    margin-top: 0.65rem;
+}
+
+.threeslash .threeslash-error {
+    text-decoration: wavy underline var(--threeslash-error);
+    text-underline-offset: 4px;
+}
+
+.threeslash .threeslash-warning {
+    text-decoration: wavy underline var(--threeslash-warning);
+    text-underline-offset: 4px;
+}
+
+.threeslash .threeslash-query,
+.threeslash .threeslash-diagnostic {
+    display: block;
+    margin: 0.6rem 0;
+    padding: 0.5rem 0.9rem;
+    border-left: 2px solid currentcolor;
+    font-size: 0.85em;
+    line-height: 1.65;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+.threeslash .threeslash-query {
+    color: var(--threeslash-accent);
+    background: color-mix(in srgb, var(--threeslash-accent) 7%, transparent);
+    white-space: normal;
+}
+
+.threeslash .threeslash-error-message {
+    color: var(--threeslash-error);
+}
+
+.threeslash .threeslash-warning-message {
+    color: var(--threeslash-warning);
+}
+
+.threeslash-copy {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--threeslash-border, currentColor);
+    border-radius: 0.35rem;
+    color: inherit;
+    background: transparent;
+    font: inherit;
+    cursor: pointer;
+}
+
+.threeslash-copy:focus-visible {
+    outline: 2px solid currentcolor;
+    outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+    .threeslash {
+        color-scheme: dark;
+    }
+}
+
+.dark .threeslash {
+    color-scheme: dark;
+}
+
+.light .threeslash {
+    color-scheme: light;
+}

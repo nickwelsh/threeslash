@@ -1,0 +1,57 @@
+name: Stage npm release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  check:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+      - name: Install npm with staged publishing support
+        run: npm install --global npm@11.21.0
+      - run: pnpm install --frozen-lockfile
+      - name: Check the release tag and choose the npm dist-tag
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          node --input-type=module <<'JS'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const { name, version } = JSON.parse(readFileSync('package.json', 'utf8'));
+          if (name !== '@nickwelsh/threeslash' || process.env.RELEASE_TAG !== `v${version}`) {
+            throw new Error('The release tag must match the @nickwelsh/threeslash package version.');
+          }
+          const prerelease = version.includes('-');
+          if (prerelease !== (process.env.PRERELEASE === 'true')) {
+            throw new Error('The GitHub prerelease flag must match the package version.');
+          }
+          appendFileSync(process.env.GITHUB_ENV, `NPM_DIST_TAG=${prerelease ? 'next' : 'latest'}\n`);
+          JS
+      - name: Build the package tarball
+        run: pnpm pack --out "$RUNNER_TEMP/threeslash.tgz"
+      - name: Stage through npm trusted publishing for maintainer approval
+        run: npm stage publish "$RUNNER_TEMP/threeslash.tgz" --access public --provenance --tag "$NPM_DIST_TAG"

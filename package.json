@@ -1,0 +1,134 @@
+{
+    "name": "@nickwelsh/threeslash",
+    "version": "0.0.1",
+    "description": "PHP type hovers and diagnostics for Shiki and Fumadocs, powered by PHPantom.",
+    "keywords": [
+        "fumadocs",
+        "laravel",
+        "mdx",
+        "php",
+        "phpantom",
+        "shiki",
+        "twoslash"
+    ],
+    "homepage": "https://github.com/nickwelsh/threeslash#readme",
+    "bugs": {
+        "url": "https://github.com/nickwelsh/threeslash/issues"
+    },
+    "license": "MIT",
+    "author": "nickwelsh (https://github.com/nickwelsh)",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/nickwelsh/threeslash.git"
+    },
+    "bin": {
+        "threeslash": "./dist/cli.js"
+    },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
+    "type": "module",
+    "sideEffects": [
+        "**/*.css"
+    ],
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        },
+        "./client": {
+            "types": "./dist/client.d.ts",
+            "import": "./dist/client.js"
+        },
+        "./fumadocs": {
+            "types": "./dist/fumadocs.d.ts",
+            "import": "./dist/fumadocs.js"
+        },
+        "./style.css": "./dist/style.css"
+    },
+    "publishConfig": {
+        "access": "public",
+        "registry": "https://registry.npmjs.org/"
+    },
+    "scripts": {
+        "build": "node scripts/clean.mjs && tsc -p tsconfig.build.json && node scripts/copy-assets.mjs",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run --project unit",
+        "test:integration": "pnpm build && vitest run --project integration",
+        "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build",
+        "prepack": "pnpm build",
+        "test:watch": "vitest --project unit",
+        "lint": "pnpm lint:js && pnpm lint:css && pnpm lint:markdown",
+        "lint:fix": "pnpm lint:js:fix && pnpm lint:css:fix && pnpm lint:markdown:fix",
+        "lint:js": "oxlint --deny-warnings --report-unused-disable-directives",
+        "lint:js:fix": "pnpm lint:js --fix",
+        "lint:css": "stylelint \"**/*.css\"",
+        "lint:css:fix": "pnpm lint:css --fix",
+        "lint:markdown": "markdownlint-cli2",
+        "lint:markdown:fix": "markdownlint-cli2 --fix",
+        "format": "oxfmt",
+        "format:check": "oxfmt --check"
+    },
+    "dependencies": {
+        "hast-util-sanitize": "^5.0.2",
+        "mdast-util-from-markdown": "^2.1.0",
+        "mdast-util-to-hast": "^13.2.1",
+        "vscode-jsonrpc": "^9.0.3",
+        "vscode-languageserver-protocol": "^3.17.5"
+    },
+    "devDependencies": {
+        "@html-eslint/eslint-plugin-react": "^0.66.1",
+        "@mdx-js/mdx": "^3.1.1",
+        "@types/hast": "^3.0.4",
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.3.0",
+        "eslint-plugin-compat": "^7.0.2",
+        "eslint-plugin-no-only-tests": "^3.4.0",
+        "eslint-plugin-no-use-extend-native": "^0.7.3",
+        "eslint-plugin-react-hooks": "^7.1.1",
+        "eslint-plugin-regexp": "^3.3.1",
+        "fumadocs-core": "^16.0.0",
+        "fumadocs-mdx": "^15.4.7",
+        "fumadocs-ui": "^16.17.1",
+        "markdownlint-cli2": "^0.23.3",
+        "oxfmt": "^0.72.0",
+        "oxlint": "^1.87.0",
+        "oxlint-tsgolint": "^7.0.2004",
+        "parse5": "^8.0.1",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "shiki": "^4.5.0",
+        "stylelint": "^17.16.0",
+        "stylelint-config-standard": "^40.0.0",
+        "typescript": "^7.0.2",
+        "vitest": "^5.0.4"
+    },
+    "peerDependencies": {
+        "fumadocs-ui": "^16.17.0",
+        "react": "^19.2.0",
+        "shiki": "^4.5.0"
+    },
+    "peerDependenciesMeta": {
+        "fumadocs-ui": {
+            "optional": true
+        },
+        "react": {
+            "optional": true
+        }
+    },
+    "browserslist": [
+        "last 2 Chrome versions",
+        "last 2 Firefox versions",
+        "last 2 Safari versions",
+        "last 2 Edge versions"
+    ],
+    "engines": {
+        "node": ">=22"
+    },
+    "packageManager": "pnpm@11.24.0"
+}

@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: true
+
+# Keep transitive dependencies patched until upstream tools update their requirements.
+overrides:
+  katex@<0.18.2: 0.18.2
+  smol-toml@<1.9.0: 1.9.0
