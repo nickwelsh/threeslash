@@ -92,10 +92,29 @@ test('compiles Twoslash-styled PHP through the Fumadocs transformer and pre comp
     expect(html).toMatch(/<pre[^>]*class="[^"]*twoslash/u);
     expect(html).not.toMatch(/class="[^"]*threeslash/u);
     expect(html).not.toContain('@errors');
-    const annotations = elements(parseFragment(html)).filter((node) =>
+    const nodes = elements(parseFragment(html));
+    const popups = nodes.filter((node) =>
+        node.attrs.some((attribute) => attribute.name === 'role' && attribute.value === 'dialog'),
+    );
+    expect(popups.length).toBeGreaterThan(0);
+    expect(
+        popups.every((node) =>
+            node.attrs.some((attribute) => attribute.name === 'style' && attribute.value === 'display:none'),
+        ),
+    ).toBe(true);
+    const annotations = nodes.filter((node) =>
         node.attrs.some((attribute) => attribute.name === 'data-threeslash-annotation'),
     );
     expect(annotations).toHaveLength(2);
     expect(annotations.every((node) => node.parentNode?.nodeName === 'code')).toBe(true);
     expect(annotations.every((node) => node.attrs.every((attribute) => attribute.name !== 'style'))).toBe(true);
+    const queries = nodes.filter(
+        (node) =>
+            node.parentNode?.nodeName === 'div' &&
+            node.attrs.some(
+                (attribute) => attribute.name === 'class' && attribute.value.includes('twoslash-popup-container'),
+            ),
+    );
+    expect(queries).toHaveLength(1);
+    expect(queries.every((node) => node.attrs.every((attribute) => attribute.name !== 'style'))).toBe(true);
 });

@@ -16,7 +16,7 @@ interface RenderState {
 }
 
 export interface ThreeslashRendererOptions {
-    /** Emit Twoslash rich-renderer classes and markup. Load Twoslash's CSS instead of Threeslash's. */
+    /** Emit Twoslash rich-renderer classes and markup. Load Twoslash's CSS and initialize the browser client for hovers. */
     matchTwoslashStyling?: boolean;
 }
 
@@ -332,6 +332,9 @@ function renderingHooks({ matchTwoslashStyling = false }: ThreeslashRendererOpti
                         id,
                         role: 'dialog',
                         ariaLabel: 'PHP documentation',
+                        // Hide before hydration, including when Twoslash's CSS
+                        // displays popup containers in the normal document flow.
+                        ...(matchTwoslashStyling ? { style: 'display: none' } : {}),
                     },
                 );
                 popup.data = { threeslashDecoration: true };

@@ -274,6 +274,7 @@ test('twoslash styling uses rich popup sections, query lines, and diagnostic sev
     expect(nodes.some((node) => String(node.properties.className).includes('threeslash'))).toBe(false);
     const trigger = findClass(nodes, 'twoslash-hover');
     const popup = findClass(descendants(trigger), 'twoslash-popup-container');
+    expect(popup.properties.style).toBe('display: none');
     expect(trigger.properties.tabIndex).toBe(0);
     expect(trigger.properties.ariaDescribedBy).toStrictEqual([popup.properties.id]);
     expect(
@@ -287,6 +288,7 @@ test('twoslash styling uses rich popup sections, query lines, and diagnostic sev
     ).toStrictEqual([['twoslash-popup-code'], ['twoslash-popup-docs']]);
     const query = findClass(nodes, 'twoslash-query-line');
     expect(hasClass(query, 'twoslash-meta-line')).toBe(true);
+    expect(findClass(descendants(query), 'twoslash-popup-container').properties.style).toBeUndefined();
     expect(descendants(query).some((node) => hasClass(node, 'twoslash-popup-arrow'))).toBe(true);
     const errors = nodes.filter((node) => hasClass(node, 'twoslash-error-line'));
     expect(errors).toHaveLength(2);

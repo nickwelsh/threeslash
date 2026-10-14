@@ -220,9 +220,11 @@ different markup. Your existing Twoslash CSS variables also theme these blocks.
 
 Keep using `ThreeslashPre` in Fumadocs: it detects the emitted classes, uses
 Fumadocs' button styles, and preserves clean source copying. For plain Shiki,
-initialize `enhanceThreeslash` as shown above to support keyboard focus,
+initialize `enhanceThreeslash` as shown above for pointer and keyboard hovers,
 Escape, and popups outside scrolling containers with Twoslash's stylesheet.
-The default remains Threeslash styling.
+Twoslash hover popups are hidden in the generated HTML to prevent a flash before
+the client starts. Inline queries and diagnostics remain visible without the
+client. The default remains Threeslash styling.
 
 ## Analyzer options and results
 
