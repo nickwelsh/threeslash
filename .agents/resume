@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Toolchains and dependencies persist in the snapshot. No services or
+# thread-specific authentication need repair, so waking needs no installation.

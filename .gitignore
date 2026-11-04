@@ -4,4 +4,4 @@ dist/
 coverage/
 test/fixtures/laravel/vendor/
 *.tsbuildinfo
-
+.amp/portals/*

@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+export DEBIAN_FRONTEND=noninteractive
+
+sudo=()
+if (( EUID != 0 )); then
+    sudo=(sudo --preserve-env=DEBIAN_FRONTEND)
+fi
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+
+echo 'Preparing system packages'
+time {
+    packages=(ca-certificates curl tar xz-utils unzip)
+    missing=()
+    for package in "${packages[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+            missing+=("$package")
+        fi
+    done
+    if (( ${#missing[@]} )); then
+        "${sudo[@]}" apt-get update -qq
+        "${sudo[@]}" apt-get install -y --no-install-recommends "${missing[@]}"
+    fi
+
+    # Debian 12 ships PHP 8.2; the fixture's documented toolchain needs 8.3.
+    packages=(php8.3-cli php8.3-curl php8.3-mbstring php8.3-xml php8.3-zip)
+    missing=()
+    for package in "${packages[@]}"; do
+        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -qx 'install ok installed'; then
+            missing+=("$package")
+        fi
+    done
+    if (( ${#missing[@]} )); then
+        if [[ ! -f /usr/share/keyrings/debsuryorg-archive-keyring.gpg ]]; then
+            curl -fsSL --retry 3 https://packages.sury.org/debsuryorg-archive-keyring.deb -o "$tmp/php-keyring.deb"
+            "${sudo[@]}" dpkg -i "$tmp/php-keyring.deb"
+        fi
+        echo 'deb [signed-by=/usr/share/keyrings/debsuryorg-archive-keyring.gpg] https://packages.sury.org/php/ bookworm main' \
+            | "${sudo[@]}" tee /etc/apt/sources.list.d/php.list >/dev/null
+        "${sudo[@]}" apt-get update -qq
+        "${sudo[@]}" apt-get install -y --no-install-recommends "${missing[@]}"
+    fi
+    "${sudo[@]}" update-alternatives --set php /usr/bin/php8.3
+    if [[ ! -x /usr/local/bin/composer ]]; then
+        curl -fsSL --retry 3 https://getcomposer.org/installer -o "$tmp/composer-setup.php"
+        signature="$(curl -fsSL --retry 3 https://composer.github.io/installer.sig)"
+        echo "$signature  $tmp/composer-setup.php" | sha384sum -c -
+        php "$tmp/composer-setup.php" --2 --install-dir="$tmp" --filename=composer
+        "${sudo[@]}" install -m 0755 "$tmp/composer" /usr/local/bin/composer
+    fi
+}
+
+echo 'Preparing Node.js 24 and pinned pnpm'
+time {
+    if [[ "$(node --version 2>/dev/null || true)" != v24.* ]]; then
+        case "$(uname -m)" in
+            x86_64) arch=x64 ;;
+            aarch64) arch=arm64 ;;
+            *) echo 'Unsupported Node.js architecture' >&2; exit 1 ;;
+        esac
+        curl -fsSL --retry 3 https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt -o "$tmp/SHASUMS256.txt"
+        archive="$(awk -v suffix="-linux-$arch.tar.xz" '$2 ~ (suffix "$") { print $2 }' "$tmp/SHASUMS256.txt")"
+        curl -fsSL --retry 3 "https://nodejs.org/dist/latest-v24.x/$archive" -o "$tmp/$archive"
+        (cd "$tmp"; grep "  $archive$" SHASUMS256.txt | sha256sum -c -)
+        "${sudo[@]}" tar -xJf "$tmp/$archive" -C /usr/local --strip-components=1
+        hash -r
+    fi
+    pnpm_version="$(node -p 'JSON.parse(require("fs").readFileSync("package.json", "utf8")).packageManager.split("@")[1]')"
+    if [[ "$(pnpm --version 2>/dev/null || true)" != "$pnpm_version" ]]; then
+        "${sudo[@]}" npm install --global --force "pnpm@$pnpm_version"
+    fi
+    node --version
+    pnpm --version
+}
+
+echo 'Preparing PHPantom 0.11.1 (prebuilt binary, no Rust compilation)'
+time {
+    if [[ "$(phpantom_lsp --version 2>/dev/null || true)" != 'phpantom_lsp 0.11.1' ]]; then
+        case "$(uname -m)" in
+            x86_64) arch=x86_64; checksum=906dd8104d4bf82aa1c4225fba297a90ff1cff0552df635ee858fc272f445fc6 ;;
+            aarch64) arch=aarch64; checksum=5c7483504e0bc245b3c6c91d746e0709a4564e559076154d25692da5a96d591c ;;
+            *) echo 'Unsupported PHPantom architecture' >&2; exit 1 ;;
+        esac
+        curl -fsSL --retry 3 \
+            "https://github.com/PHPantom-dev/phpantom_lsp/releases/download/0.11.1/phpantom_lsp-$arch-unknown-linux-gnu.tar.gz" \
+            -o "$tmp/phpantom.tar.gz"
+        echo "$checksum  $tmp/phpantom.tar.gz" | sha256sum -c -
+        tar -xzf "$tmp/phpantom.tar.gz" -C "$tmp"
+        "${sudo[@]}" install -m 0755 "$tmp/phpantom_lsp" /usr/local/bin/phpantom_lsp
+    fi
+    phpantom_lsp --version
+}
+
+echo 'Installing locked JavaScript and Laravel dependencies'
+time pnpm install --frozen-lockfile
+time composer install --working-dir=test/fixtures/laravel --no-scripts --no-plugins --no-interaction --prefer-dist --no-progress
+
+echo 'Orb setup ready'
