@@ -36,8 +36,8 @@ importers:
         specifier: ^2.2.0
         version: 2.2.0
       vscode-jsonrpc:
-        specifier: ^9.0.3
-        version: 9.0.3
+        specifier: ^10.0.0
+        version: 10.0.0
       vscode-languageserver-protocol:
         specifier: ^3.17.5
         version: 3.18.4
@@ -3437,6 +3437,10 @@ packages:
 
   vscode-css-languageservice@6.3.10:
     resolution: {integrity: sha512-eq5N9Er3fC4vA9zd9EFhyBG90wtCCuXgRSpAndaOgXMh1Wgep5lBgRIeDgjZBW9pa+332yC9+49cZMW8jcL3MA==}
+
+  vscode-jsonrpc@10.0.0:
+    resolution: {integrity: sha512-USSfxg0vDIpTQqlQBGxF3mBARyoS8cU7LHLpbYNh6dOJt32dlskxPWB0Irrh5TllTmyf7oNLAvqDqzklbwwnpA==}
+    engines: {node: '>=14.17.0'}
 
   vscode-jsonrpc@9.0.3:
     resolution: {integrity: sha512-qETYf9PCl1lVfwR+oBmMfc4vP2nqLNA35ABxorw3j06+xlKRgDVxbLgKm4Y/xPL0YWdeDjLoI4ImICIT3nB0zQ==}
@@ -6960,6 +6964,8 @@ snapshots:
       vscode-languageserver-textdocument: 1.0.15
       vscode-languageserver-types: 3.17.5
       vscode-uri: 3.2.0
+
+  vscode-jsonrpc@10.0.0: {}
 
   vscode-jsonrpc@9.0.3: {}
 
