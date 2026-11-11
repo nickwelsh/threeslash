@@ -43,8 +43,8 @@ importers:
         version: 3.18.4
     devDependencies:
       '@html-eslint/eslint-plugin-react':
-        specifier: ^0.67.0
-        version: 0.67.0(eslint@10.12.0(supports-color@10.2.2))
+        specifier: ^0.68.0
+        version: 0.68.0(eslint@10.12.0(supports-color@10.2.2))
       '@mdx-js/mdx':
         specifier: ^3.1.1
         version: 3.1.1(supports-color@10.2.2)
@@ -495,18 +495,18 @@ packages:
   '@fumari/image-size@0.1.1':
     resolution: {integrity: sha512-iaiV2wyzJ4mW358NX4CX3yGit+WjKYzpaQ+rldK9BjL/5jFpeV6ruWnZVq7MEyMn3Gd0DLi8g/79NZAAQaGscw==}
 
-  '@html-eslint/core@0.67.0':
-    resolution: {integrity: sha512-MPoKw4woCkuFYs2xdt0vEjzGbUzU8lxeTZkxyrtHM+zZlaK/u/lqcIapZmyCTQBqNE0H9J8zc9TmXjygfHcuXg==}
+  '@html-eslint/core@0.68.0':
+    resolution: {integrity: sha512-u3HioqcKIH6dVQp2uulmpcuUqgKLqiuOWyHAl7hV4hIUkuJ3ge7vEUwPoWvNRbfy3aWOMygttokdGxL5q9YFIg==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@html-eslint/eslint-plugin-react@0.67.0':
-    resolution: {integrity: sha512-YqrkBMUdvwLNeLYYoITZToYjqSVbNHENy3gAXx4SHy03YB3W/z9yBInYAAdwcQxI6aHZLz0LYZ0LYEb1XnCRjw==}
+  '@html-eslint/eslint-plugin-react@0.68.0':
+    resolution: {integrity: sha512-x1Xq9Rd0morN+s/sX7RvdmuIFzjIFx3nsPOlrKa3GX29VjBHQ3gGpzOGLZDmXFzrDgHfCzQM6hEBDgnty9bApA==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
       eslint: '>=8.0.0 || ^10.0.0-0'
 
-  '@html-eslint/types@0.67.0':
-    resolution: {integrity: sha512-8w9V0sTm2DGLh2uslL7+Un9g/FHNcevgouiTLhlAJoBhhGOK5+fX76QCKdWbgmpudNGo8Nh1kHKsJP3a6twzXA==}
+  '@html-eslint/types@0.68.0':
+    resolution: {integrity: sha512-FW+FjFHp/w1V4uZ0us7keR6mAA+WGh6OsHvJ+Kzy8aBeogyOapDPEMT+zkXSsiJ+V9maJ6umqG20BXcs2y6lsw==}
 
   '@humanfs/core@0.19.2':
     resolution: {integrity: sha512-UhXNm+CFMWcbChXywFwkmhqjs3PRCmcSa/hfBgLIb7oQ5HNb1wS0icWsGtSAUNgefHeI+eBrA8I1fxmbHsGdvA==}
@@ -3825,17 +3825,17 @@ snapshots:
 
   '@fumari/image-size@0.1.1': {}
 
-  '@html-eslint/core@0.67.0':
+  '@html-eslint/core@0.68.0':
     dependencies:
-      '@html-eslint/types': 0.67.0
+      '@html-eslint/types': 0.68.0
       html-standard: 0.0.13
 
-  '@html-eslint/eslint-plugin-react@0.67.0(eslint@10.12.0(supports-color@10.2.2))':
+  '@html-eslint/eslint-plugin-react@0.68.0(eslint@10.12.0(supports-color@10.2.2))':
     dependencies:
-      '@html-eslint/core': 0.67.0
+      '@html-eslint/core': 0.68.0
       eslint: 10.12.0(supports-color@10.2.2)
 
-  '@html-eslint/types@0.67.0':
+  '@html-eslint/types@0.68.0':
     dependencies:
       '@types/css-tree': 2.3.11
       '@types/estree': 1.0.9
